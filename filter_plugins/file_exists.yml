@@ -1,0 +1,32 @@
+---
+DOCUMENTATION:
+  name: file_exists
+  version_added: "1.0"
+  short_description: evaluate results of stat
+  description:
+    - Evaluate results of ansible.builtin.stat.
+    - Returns True if file is either regular file or symlink.
+  positional: _input
+  options:
+    _input:
+      description: Value returned by ansible.builtin.stat.
+      type: dict
+      required: true
+
+EXAMPLES: |
+  - name: Check if SSL certificate exists
+    ansible.builtin.stat:
+      path: "/path/to/ssl.cert"
+    register: _stat_ssl_cert
+
+  - name: Does SSL cert file exist?
+    ansible.builtin.debug:
+      msg: "No, it does not"
+    when: >
+      _stat_ssl_cert is not defined
+      or _stat_ssl_cert | file_exists is false
+
+RETURN:
+  _value:
+    description: True if file is either regular file or symlink.
+    type: bool

@@ -1,0 +1,253 @@
+%YAML 1.2
+---
+argument_specs:
+  apache_vhost:
+    short_description: Apache Virtual Host specification.
+    description: Specification of config options for Apache Virtual Host.
+    options:
+      priority:
+        description: Priority, order of inclusion, of configuration file.
+        required: false
+        type: int
+      state:
+        description: State of configuration file - present, absent etc.
+        required: false
+        type: str
+        choices: ['present', 'absent', 'purged']
+      servername:
+        description: |
+          ServerName is used to uniquely identify a virtual host, when using
+          name-based virtual hosts.
+        required: true
+        type: str
+      listen_ip:
+        description: Listen IP or asterisk.
+        type: str
+        required: false
+      port:
+        description: Port number where virtual host should be listening at.
+        required: true
+        type: int
+      serveraliases:
+        description: ServerAlias directive sets the alternate names for a host.
+        required: false
+        type: list
+        elements: str
+      serveradmin:
+        description: |
+          ServerAdmin sets the contact address that the server includes in any
+          error messages it returns to the client.
+        required: false
+        type: str
+      docroot:
+        description: Directory from which httpd will serve files.
+        required: false
+        type: str
+      add_default_charset:
+        description: Add default charset - on, off, charset.
+        required: false
+        type: str
+      directories:
+        description: |
+          List of Directory, Files, Location directives and their
+          configuration.
+        required: false
+        type: list
+        elements: dict
+        options:
+          provider:
+            description: Directives like Directory, Files, Location etc.
+            required: false
+            type: str
+          # NOTE(zstyblik): path or url
+          path:
+            description: Path or URL.
+            required: true
+            type: str
+          # NOTE(zstyblik): possible collision with spec itself.
+          'options':
+            description: |
+              Configures which features are available in a particular directory.
+            required: false
+            type: list
+            elements: str
+          index_options:
+            description: Various configuration settings for directory indexing.
+            required: false
+            type: list
+            elements: str
+          index_order_default:
+            description: Sets the default ordering of the directory index.
+            required: false
+            type: list
+            elements: str
+          # NOTE(zstyblik): path or url
+          index_style_sheet:
+            description: Adds a CSS stylesheet to the directory index.
+            required: false
+            type: str
+          allow_override:
+            description: |
+              Types of directives that are allowed in .htaccess files.
+            required: false
+            type: list
+            elements: str
+          # NOTE(zstyblik): a polymorph which can be many things
+          require:
+            description: Require directive for given Directory, Location etc.
+            required: false
+          auth_require:
+            description: |
+              Tests whether an authenticated user is authorized by an
+              authorization provider.
+            required: false
+            type: str
+          directoryindex:
+            description: |
+              List of resources to look for when the client requests a
+              directory.
+            required: false
+            type: str
+          addhandlers:
+            description: Add handlers for matching files.
+            required: false
+            type: list
+            elements: dict
+            options:
+              extensions:
+                description: Regexp.
+                required: true
+                type: list
+                elements: str
+              handler:
+                description: Name of handler.
+                required: true
+                type: str
+      # NOTE(zstyblik): This might be a duplicate of "custom_fragment"
+      extra_parameters:
+        description: |
+          Allows you to specify extra configuration parameters.
+        required: false
+        type: str
+      error_log:
+        description: |
+          Whether error log should be enabled or not. Defaults to true.
+        required: false
+        type: bool
+      error_log_destination:
+        description: Error log destination.
+        required: false
+        type: str
+      log_level:
+        description: |
+          Adjust the verbosity of the messages recorded in the error logs.
+        required: false
+        type: str
+      error_log_format24:
+        description: Configuration of Error Log formats.
+        required: false
+        type: list
+        elements: dict
+        options:
+          flag:
+            description: |
+              Allows to specify additional formats, causing additional
+              information to be logged.
+            required: false
+            type: str
+            choices: ['connection', 'request']
+          format:
+            description: Error Log format string.
+            required: true
+            type: str
+      access_logs:
+        description: CustomLog(access log) definitions and configurations.
+        required: false
+        type: list
+        elements: dict
+        options:
+          env:
+            description: fixme
+            required: false
+            type: str
+          format:
+            description: fixme
+            required: false
+            type: str
+          file:
+            description: fixme
+            required: false
+            type: str
+          syslog:
+            description: fixme
+            required: false
+            type: str
+          pipe:
+            description: fixme
+            required: false
+            type: str
+      rewrites:
+        description: List of rewrite rules.
+        required: false
+        type: list
+        elements: dict
+        options:
+          rewrite_cond:
+            description: The RewriteCond directive defines a rule condition.
+            required: false
+            type: list
+            elements: str
+          rewrite_rule:
+            description: Rewrite rule itself.
+            required: false
+            type: list
+            elements: str
+      # NOTE(zstyblik): bool should suffice, I think.
+      rewrite_inherit:
+        description: |
+          Whether maps, conditions and rules of the main server should be
+          inherited.
+        required: false
+        type: bool
+      rewrite_base:
+        description: |
+          The RewriteBase directive specifies the URL prefix to be used for
+          per-directory (htaccess) RewriteRule directives that substitute a
+          relative path.
+        required: false
+        type: str
+      ssl:
+        description: SSL configuration. May contain multiple certs.
+        required: false
+        type: list
+        elements: dict
+        options:
+          ssl_cert:
+            description: Path to SSL certificate file.
+            required: true
+            type: str
+          ssl_key:
+            description: Path to SSL key file.
+            required: true
+            type: str
+          ssl_cacerts_dir:
+            description: directory where you keep the Certificates of CA.
+            required: false
+            type: path
+      additional_includes:
+        description: |
+          Additional config files which should be Include-d into virtual host's
+          configuration.
+        required: false
+        type: list
+        elements: str
+      use_optional_includes:
+        description: |
+          Whether to use IncludeOptional instead of Include for additional
+          includes.
+        required: false
+        type: bool
+      custom_fragment:
+        description: Allows you to include custom fragment of configuration.
+        required: false
+        type: str

@@ -1,0 +1,108 @@
+---
+# Which MPM module should be used eg. prefork or event.
+apache_mpm_module: "prefork"
+# Remove default vhost shipped by eg. Debian
+apache_remove_default_vhost: false
+# Don't enable virtual host, if SSL cert/key is missing resp. doesn't exist.
+apache_skip_vhost_on_missing_ssl_cert: false
+# Virtual Host configurations.
+apache_vhosts:
+  - servername: "local1.dev"
+    port: 80
+    docroot: "/var/www/html"
+# Only used on Debian/Ubuntu.
+# Example:
+# apache_mods:
+#   - name: rewrite
+#     state: present
+apache_mods: []
+
+# Only used on Debian/Ubuntu.
+# Example:
+# apache_confs:
+#   - name: trace
+#     state: absent
+apache_confs: []
+
+# httpd.conf
+#
+# These are required by httpd template one way or another
+apache_httpd_server_tokens: "Prod"
+apache_httpd_server_signature: "On"
+apache_httpd_trace_enable: "On"
+apache_httpd_servername: null
+apache_httpd_server_root: "/etc/apache2"
+apache_httpd_default_runtime_dir: null
+
+apache_httpd_pidfile: "${APACHE_PID_FILE}"
+apache_httpd_timeout: 60
+apache_httpd_keepalive: "On"
+apache_httpd_max_keepalive_requests: 100
+apache_httpd_keepalive_timeout: 15
+apache_httpd_limitreqfieldsize: 8190
+apache_httpd_limitreqfields: 100
+
+apache_httpd_http_protocol_options: null
+apache_httpd_protocols: []
+apache_httpd_protocols_honor_order: null
+apache_httpd_rewrite_lock: null
+
+apache_httpd_user: null
+apache_httpd_group: null
+# Default options for / directory
+apache_httpd_root_directory_options: ["FollowSymLinks"]
+# NOTE(zstyblik): Deny access to /
+apache_httpd_root_directory_secured: true
+apache_httpd_default_charset: null
+apache_httpd_default_type: "none"
+# The default value for host hame lookup
+apache_httpd_hostname_lookups: "Off"
+apache_httpd_error_log: "error.log"
+apache_httpd_logroot: null
+# The default error log level
+apache_httpd_log_level: "warn"
+apache_httpd_sendfile: "On"
+# NOTE(zstyblik): should be one of ["on", "off", "nodecode"]
+apache_httpd_allow_encoded_slashes: null
+apache_httpd_file_e_tag: null
+apache_httpd_use_canonical_name: null
+# NOTE(zstyblik): This seems to be for freebsd
+apache_httpd_apxs_workaround: false
+# NOTE(zstyblik): probably distro specific!
+apache_httpd_dir: "/etc/apache2"
+apache_httpd_conf_dir: "/etc/apache2"
+apache_httpd_mod_load_dir: "{{ apache_httpd_conf_dir }}/mods-available"
+apache_httpd_mod_enable_dir: "{{ apache_httpd_conf_dir }}/mods-enabled"
+apache_httpd_conf_load_dir: "{{ apache_httpd_conf_dir }}/conf-available"
+apache_httpd_conf_enable_dir: "{{ apache_httpd_conf_dir }}/conf-enabled"
+# NOTE(zstyblik): distro specific and useless on Debian
+apache_httpd_confd_dir: null
+apache_httpd_vhost_load_dir: "{{ apache_httpd_dir }}/sites-available"
+apache_httpd_vhost_enable_dir: "{{ apache_httpd_dir }}/sites-enabled"
+apache_httpd_ports_file: "{{ apache_httpd_dir }}/ports.conf"
+# Example:
+# apache_httpd_log_formats:
+#   myformat: "%{User-agent}i"
+apache_httpd_log_formats: {}
+apache_httpd_vhost_include_pattern: "*"
+apache_httpd_ldap_trusted_mode: null
+apache_httpd_ldap_verify_server_cert: null
+apache_httpd_error_documents_path: "/usr/share/apache2/error"
+
+# NOTE(zstyblik): these might be removed in (near) future, because I see no
+# point in having these "defaults" around.
+apache_httpd_var_www_enable: false
+apache_httpd_usr_share_enable: false
+
+# Set initial apache state. Recommended values: "started" or "stopped"
+apache_state: started
+# Set apache state when configuration changes are made. Recommended values:
+# "restarted" or "reloaded"
+apache_restart_state: restarted
+# Apache package state; use "present" to make sure it's installed, or "latest"
+# if you want to upgrade or switch versions using a new repo.
+apache_packages_state: present
+
+apache_httpd_template: "httpd.conf.j2"
+apache_ports_template: "ports.conf.j2"
+apache_vhosts_template: "vhost.conf.j2"

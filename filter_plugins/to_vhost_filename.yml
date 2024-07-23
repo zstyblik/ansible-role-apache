@@ -1,0 +1,23 @@
+---
+DOCUMENTATION:
+  name: to_vhost_filename
+  version_added: "1.0"
+  short_description: turn item from apache_vhosts into filename.
+  description:
+    - Assemble filename(used to store vhost config) from item in apache_vhosts.
+  positional: _input
+  options:
+    _input:
+      description: item from apache_vhosts.
+      type: dict
+      required: true
+
+EXAMPLES: |
+  - name: Get virtual host's filename.
+    ansible.builtin.set_fact:
+      apache_vhost_filename: "{{ apache_vhosts[0] | to_vhost_filename }}"
+
+RETURN:
+  _value:
+    description: filename of given virtual host.
+    type: str

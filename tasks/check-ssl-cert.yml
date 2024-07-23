@@ -1,0 +1,21 @@
+---
+- name: Check if SSL certificate exists
+  ansible.builtin.stat:
+    path: "{{ _apache_vhost_ssl.ssl_cert | default('/does/not/exist') }}"
+  register: _apache_vhost_stat_ssl_cert
+  become: true
+
+- name: Check if SSL key exists
+  ansible.builtin.stat:
+    path: "{{ _apache_vhost_ssl.ssl_key | default('/does/not/exist') }}"
+  register: _apache_vhost_stat_ssl_key
+  become: true
+
+- name: Ignore virtual host due to missing SSL certificate
+  ansible.builtin.set_fact:
+    apache_ignored_ssl_sites: "{{ apache_ignored_ssl_sites + [_apache_vhost_filename] }}"
+  when: >
+    _apache_vhost_stat_ssl_cert is not defined
+    or _apache_vhost_stat_ssl_key is not defined
+    or _apache_vhost_stat_ssl_cert | file_exists is false
+    or _apache_vhost_stat_ssl_key | file_exists is false

@@ -1,0 +1,28 @@
+---
+- name: Generate virtual host config file.
+  ansible.builtin.template:
+    src: "{{ apache_vhosts_template }}"
+    dest: "{{ apache_httpd_vhost_load_dir }}/{{ apache_vhost | to_vhost_filename }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - apache_vhost.state | default('present') == 'present'
+  notify: restart apache
+  become: true
+
+- name: Check if SSL cert/key files are defined and exist.
+  ansible.builtin.include_tasks:
+    file: check-ssl-cert.yml
+    apply:
+      vars:
+        _apache_vhost_filename: "{{ apache_vhost | to_vhost_filename }}"
+        _apache_vhost_ssl: "{{ _apache_vhost_ssl_item }}"
+  loop: "{{ apache_vhost.ssl }}"
+  loop_control:
+    label: "{{ apache_vhost | to_vhost_filename }}"
+    loop_var: _apache_vhost_ssl_item
+  when:
+    - apache_skip_vhost_on_missing_ssl_cert
+    - apache_vhost.state | default('present') == 'present'
+    - apache_vhost.ssl is defined

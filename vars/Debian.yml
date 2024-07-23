@@ -1,0 +1,15 @@
+---
+apache_service: apache2
+apache_daemon: apache2
+apache_daemon_path: /usr/sbin/
+# NOTE(zstyblik): without .conf
+apache_default_vhost_filename: 000-default
+
+__apache_packages:
+  - apache2
+  - apache2-utils
+# NOTE(zstyblik): These are defined in /etc/apache2/envvars
+__apache_httpd_user: "${APACHE_RUN_USER}"
+__apache_httpd_group: "${APACHE_RUN_GROUP}"
+__apache_httpd_logroot: "${APACHE_LOG_DIR}"
+__apache_httpd_default_runtime_dir: "${APACHE_RUN_DIR}"

@@ -1,0 +1,23 @@
+---
+- name: Check vhosts against spec file
+  ansible.builtin.validate_argument_spec:
+    argument_spec: |
+      {{
+        (
+          lookup(
+            'ansible.builtin.file',
+            'specs/apache_vhost_argument_specs.yml'
+          ) | from_yaml
+        )['argument_specs']['apache_vhost']['options']
+      }}
+    provided_arguments: "{{ apache_vhost }}"
+
+- name: Check for filename collision.
+  ansible.builtin.assert:
+    that: "apache_vhost | to_vhost_filename not in apache_managed_sites"
+    quiet: true
+    fail_msg: "Virtual host filename collision. '{{ apache_vhost | to_vhost_filename }}' already exists!"
+
+- name: Add virtual host into managed sites.
+  ansible.builtin.set_fact:
+    apache_managed_sites: "{{ apache_managed_sites + [apache_vhost | to_vhost_filename] }}"

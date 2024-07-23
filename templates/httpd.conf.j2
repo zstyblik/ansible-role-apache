@@ -1,0 +1,220 @@
+#jinja2: trim_blocks:True,lstrip_blocks:True
+# Managed by Ansible.
+# Security
+ServerTokens {{ apache_httpd_server_tokens }}
+ServerSignature {{ 'On' if apache_httpd_server_signature.lower() == 'on' else 'Off' }}
+TraceEnable {{ 'On' if apache_httpd_trace_enable.lower() == 'on' else 'Off' }}
+
+ServerName "{{ apache_httpd_servername }}"
+ServerRoot "{{ apache_httpd_server_root }}"
+{#- Actually >= 2.4.2, but the patch version is not provided -#}
+{% if apache_httpd_default_runtime_dir and apache_version.startswith('2.4') +%}
+DefaultRuntimeDir {{ apache_httpd_default_runtime_dir }}
+{% endif %}
+PidFile {{ apache_httpd_pidfile }}
+Timeout {{ apache_httpd_timeout }}
+KeepAlive {{ 'On' if apache_httpd_keepalive.lower() == 'on' else 'Off' }}
+MaxKeepAliveRequests {{ apache_httpd_max_keepalive_requests }}
+KeepAliveTimeout {{ apache_httpd_keepalive_timeout }}
+LimitRequestFieldSize {{ apache_httpd_limitreqfieldsize }}
+LimitRequestFields {{ apache_httpd_limitreqfields }}
+{#- Actually >= 2.4.24, but the patch version is not provided -#}
+{% if apache_httpd_http_protocol_options and apache_version.startswith('2.4') %}
+HttpProtocolOptions {{ apache_httpd_http_protocol_options }}
+{% endif %}
+
+{#- Actually >= 2.4.17, but the patch version is not provided -#}
+{% if apache_version.startswith('2.4') %}
+  {% if apache_httpd_protocols %}
+Protocols {{ apache_httpd_protocols | join(' ') }}
+  {% endif %}
+  {% if apache_httpd_protocols_honor_order %}
+ProtocolsHonorOrder {{ 'True' if apache_httpd_protocols_honor_order else 'False' }}
+  {% endif %}
+{% endif %}
+
+{% if apache_httpd_rewrite_lock and apache_version.startswith('2.2') %}
+RewriteLock {{ apache_httpd_rewrite_lock }}
+{% endif %}
+
+User {{ apache_httpd_user }}
+Group {{ apache_httpd_group }}
+
+AccessFileName .htaccess
+<FilesMatch "^\.ht">
+{% if apache_version.startswith('2.4') %}
+    Require all denied
+{% else %}
+     Order allow,deny
+     Deny from all
+     Satisfy all
+{% endif %}
+</FilesMatch>
+
+<Directory />
+  Options {{ apache_httpd_root_directory_options | join(' ') }}
+  AllowOverride None
+{% if apache_httpd_root_directory_secured %}
+    {% if apache_version.startswith('2.4') %}
+  Require all denied
+    {% else %}
+  Order deny,allow
+  Deny from all
+    {% endif %}
+{% endif %}
+</Directory>
+
+{% if apache_httpd_usr_share_enable is sameas true %}
+<Directory /usr/share>
+  AllowOverride None
+{%   if apache_version.startswith('2.4') %}
+  Require all granted
+{%   else %}
+  Order allow,deny
+  Deny from all
+  Satisfy all
+{%   endif %}
+</Directory>
+{% endif %}
+
+{% if apache_httpd_var_www_enable is sameas true %}
+<Directory /var/www/>
+  Options Indexes FollowSymLinks
+  AllowOverride None
+{%   if apache_version.startswith('2.4') %}
+  Require all granted
+{%   else %}
+  Order allow,deny
+  Deny from all
+  Satisfy all
+{%   endif %}
+</Directory>
+{% endif %}
+
+{% if apache_httpd_default_charset %}
+AddDefaultCharset {{ apache_httpd_default_charset }}
+{% endif %}
+
+{% if apache_version.startswith('2.2') %}
+DefaultType {{ apache_httpd_default_type }}
+{% endif %}
+HostnameLookups {{ apache_httpd_hostname_lookups }}
+{# NOTE: if /^[|\/]/.match(apache_httpd_error_log) or /^syslog:/.match(apache_httpd_error_log) #}
+{% if apache_httpd_error_log.startswith('|') or apache_httpd_error_log.startswith('/') or apache_httpd_error_log.startswith('syslog:') %}
+ErrorLog "{{ apache_httpd_error_log }}"
+{% else %}
+ErrorLog "{{ apache_httpd_logroot }}/{{ apache_httpd_error_log }}"
+{% endif %}
+LogLevel {{ apache_httpd_log_level }}
+EnableSendfile {{ 'On' if apache_httpd_sendfile.lower() == 'on' else 'Off' }}
+{% if apache_httpd_allow_encoded_slashes %}
+AllowEncodedSlashes {{ apache_httpd_allow_encoded_slashes }}
+{% endif %}
+{% if apache_httpd_file_e_tag %}
+FileETag {{ apache_httpd_file_e_tag }}
+{% endif %}
+{% if apache_httpd_use_canonical_name %}
+UseCanonicalName {{ apache_httpd_use_canonical_name }}
+{% endif %}
+
+{% if apache_httpd_apxs_workaround %}
+# Workaround: without this hack apxs would be confused about where to put
+# LoadModule directives and fail entire procedure of apache package
+# installation/reinstallation. This problem was observed on FreeBSD (apache22).
+#LoadModule fake_module libexec/apache22/mod_fake.so
+{% endif %}
+
+Include "{{ apache_httpd_mod_enable_dir }}/*.load"
+{% if apache_httpd_mod_enable_dir != apache_httpd_confd_dir and apache_httpd_mod_enable_dir != apache_httpd_vhost_enable_dir and apache_httpd_mod_enable_dir != apache_httpd_conf_enable_dir %}
+Include "{{ apache_httpd_mod_enable_dir }}/*.conf"
+{% endif %}
+Include "{{ apache_httpd_ports_file }}"
+
+{% if 'vhost_combined' not in apache_httpd_log_formats %}
+LogFormat "%v:%p %h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\"" vhost_combined
+{% endif %}
+{% if 'combined' not in apache_httpd_log_formats %}
+LogFormat "%h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\"" combined
+{% endif %}
+{% if 'common' not in apache_httpd_log_formats %}
+LogFormat "%h %l %u %t \"%r\" %>s %O" common
+{% endif %}
+{% if 'referer' not in apache_httpd_log_formats %}
+LogFormat "%{Referer}i -> %U" referer
+{% endif %}
+{% if 'agent' not in apache_httpd_log_formats %}
+LogFormat "%{User-agent}i" agent
+{% endif %}
+{% if 'forwarded' not in apache_httpd_log_formats %}
+LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %s %b \"%{Referer}i\" \"%{User-agent}i\"" forwarded
+{% endif %}
+{% if apache_httpd_log_formats %}
+  {% for nickname, fmt in apache_httpd_log_formats.items() %}
+LogFormat "{{ fmt }}" {{ nickname }}
+  {% endfor %}
+{% endif %}
+
+{% if apache_httpd_conf_enable_dir %}
+{%   if apache_version.startswith('2.4') %}
+IncludeOptional "{{ apache_httpd_conf_enable_dir }}/*.conf"
+{%   else %}
+Include "{{ apache_httpd_conf_enable_dir }}/*.conf"
+{%   endif %}
+{% endif %}
+{% if apache_httpd_confd_dir %}
+{%   if apache_version.startswith('2.4') %}
+IncludeOptional "{{ apache_httpd_confd_dir }}/*.conf"
+{%   else %}
+Include "{{ apache_httpd_confd_dir }}/*.conf"
+{%   endif %}
+{% endif %}
+{% if apache_httpd_vhost_enable_dir != apache_httpd_confd_dir and apache_httpd_vhost_enable_dir != apache_httpd_conf_enable_dir %}
+    {% if apache_version.startswith('2.4') %}
+IncludeOptional "{{ apache_httpd_vhost_enable_dir }}/{{ apache_httpd_vhost_include_pattern }}"
+    {% else %}
+Include "{{ apache_httpd_vhost_enable_dir }}/{{ apache_httpd_vhost_include_pattern }}"
+    {% endif %}
+{% endif %}
+{% if apache_httpd_ldap_verify_server_cert %}
+LDAPVerifyServerCert {{ apache_httpd_ldap_verify_server_cert }}
+{% endif %}
+{% if apache_httpd_ldap_trusted_mode %}
+LDAPTrustedMode {{ apache_httpd_ldap_trusted_mode }}
+{% endif %}
+
+{% if apache_httpd_error_documents_path %}
+Alias /error/ "{{ apache_httpd_error_documents_path }}/"
+
+<Directory "{{ apache_httpd_error_documents_path }}">
+  AllowOverride None
+  Options IncludesNoExec
+  AddOutputFilter Includes html
+  AddHandler type-map var
+{% if apache_version.startswith('2.4') %}
+  Require all granted
+{% else %}
+  Order allow,deny
+  Allow from all
+{% endif %}
+  LanguagePriority en cs de es fr it nl sv pt-br ro
+  ForceLanguagePriority Prefer Fallback
+</Directory>
+
+ErrorDocument 400 /error/HTTP_BAD_REQUEST.html.var
+ErrorDocument 401 /error/HTTP_UNAUTHORIZED.html.var
+ErrorDocument 403 /error/HTTP_FORBIDDEN.html.var
+ErrorDocument 404 /error/HTTP_NOT_FOUND.html.var
+ErrorDocument 405 /error/HTTP_METHOD_NOT_ALLOWED.html.var
+ErrorDocument 408 /error/HTTP_REQUEST_TIME_OUT.html.var
+ErrorDocument 410 /error/HTTP_GONE.html.var
+ErrorDocument 411 /error/HTTP_LENGTH_REQUIRED.html.var
+ErrorDocument 412 /error/HTTP_PRECONDITION_FAILED.html.var
+ErrorDocument 413 /error/HTTP_REQUEST_ENTITY_TOO_LARGE.html.var
+ErrorDocument 414 /error/HTTP_REQUEST_URI_TOO_LARGE.html.var
+ErrorDocument 415 /error/HTTP_UNSUPPORTED_MEDIA_TYPE.html.var
+ErrorDocument 500 /error/HTTP_INTERNAL_SERVER_ERROR.html.var
+ErrorDocument 501 /error/HTTP_NOT_IMPLEMENTED.html.var
+ErrorDocument 502 /error/HTTP_BAD_GATEWAY.html.var
+ErrorDocument 503 /error/HTTP_SERVICE_UNAVAILABLE.html.var
+ErrorDocument 506 /error/HTTP_VARIANT_ALSO_VARIES.html.var
+{% endif %}
