@@ -1,0 +1,283 @@
+---
+- name: Initialize helper variables.
+  ansible.builtin.set_fact:
+    apache_ignored_ssl_sites: []
+    apache_managed_sites: []
+    _apache_mpm_module: "mpm_{{ apache_mpm_module }}"
+
+- name: Generate Apache httpd configuration file.
+  ansible.builtin.template:
+    src: "{{ apache_httpd_template }}"
+    dest: "{{ apache_httpd_dir }}/apache2.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart apache
+  become: true
+
+- name: Validate virtual host configuration.
+  ansible.builtin.include_tasks:
+    file: validate-vhost.yml
+    apply:
+      vars:
+        apache_vhost: "{{ item }}"
+  loop: "{{ apache_vhosts }}"
+  # NOTE(zstyblik): cannot use to_vhost_filename until validated.
+  loop_control:
+    label: "{{ item.servername | default('unknown') }}:{{ item.port | default(0) }}"
+
+- name: Gather Binding to Addresses and Ports information.
+  apache_ports_generator:
+    vhosts: "{{ apache_vhosts }}"
+  register: apache_bindings
+
+- name: Configure Apache ports.
+  ansible.builtin.template:
+    src: "{{ apache_ports_template }}"
+    dest: "{{ apache_httpd_ports_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart apache
+  become: true
+
+- name: Get list of enabled Apache modules.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2query
+      - -m
+  register: _apache_cmd_a2q_mods
+  changed_when: false
+  failed_when:
+    - _apache_cmd_a2q_mods.rc != 0
+    - _apache_cmd_a2q_mods.rc != 32
+  become: true
+
+- name: Parse enabled modules from a2query's output.
+  ansible.builtin.set_fact:
+    _apache_a2q_mods: "{{ _apache_cmd_a2q_mods.stdout_lines | parse_a2query }}"
+
+# NOTE(zstyblik): mpm_ prefix(even itk), everything else is created
+# out-of-band/garbage
+#
+# 1. if itk, install package
+# 2. call a2enmod
+# 3. disable other MPM modules
+# 4. somehow inject module into managed ones, so it doesn't get disabled
+#
+# If we run a2query, we can check if mod is already enabled and do nothing
+- name: Install Apache mpm package.
+  ansible.builtin.package:
+    name: "apache2-mpm-{{ apache_mpm_module }}"
+    state: present
+  when: "apache_version.split('.')[1] | int < 4"
+  become: true
+
+- name: Install Apache mpm itk package.
+  ansible.builtin.package:
+    name: "libapache2-mpm-itk"
+    state: present
+  when: "apache_mpm_module == 'itk'"
+  become: true
+
+- name: Configure Apache mpm module.
+  ansible.builtin.include_tasks:
+    file: configure-mpm-module.yml
+  when: >
+    _apache_mpm_module not in _apache_a2q_mods
+    or (apache_mpm_module != 'itk' and 'mpm_itk' in _apache_a2q_mods)
+
+# Apache confs
+- name: Get list of enabled Apache config files.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2query
+      - -c
+  register: _apache_cmd_a2q_confs
+  changed_when: false
+  failed_when:
+    - _apache_cmd_a2q_confs.rc != 0
+    - _apache_cmd_a2q_confs.rc != 32
+  become: true
+
+- name: Parse enabled config files from a2query's output.
+  ansible.builtin.set_fact:
+    _apache_a2q_confs: "{{ _apache_cmd_a2q_confs.stdout_lines | parse_a2query }}"
+
+# NOTE(zstyblik): run a2en* regardless
+# re-add check "is in a2q STDOUT", if necessary to save cycles.
+- name: Enable desired Apache confs.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2enconf
+      - -q
+      - "{{ item.name }}"
+  register: _apache_cmd_a2enconf
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2enconf.stdout_lines"
+  failed_when: _apache_cmd_a2enconf.rc != 0
+  loop: "{{ apache_confs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.state | default('present') == 'present'
+  notify: restart apache
+  become: true
+
+- name: Disable desired Apache confs.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2disconf
+      - -q
+      - "{{ item.name }}"
+  register: _apache_cmd_a2disconf
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2disconf.stdout_lines"
+  failed_when: _apache_cmd_a2disconf.rc != 0
+  loop: "{{ apache_confs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.state | default('present') != 'present'
+    - item.name in _apache_a2q_confs
+  notify: restart apache
+  become: true
+
+# Apache mods
+# NOTE(zstyblik): run a2en* regardless
+# re-add check "is in a2q STDOUT", if necessary to save cycles.
+- name: Enable desired Apache mods.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2enmod
+      - -q
+      - "{{ item.name }}"
+  register: _apache_cmd_a2enmod
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2enmod.stdout_lines"
+  failed_when: _apache_cmd_a2enmod.rc != 0
+  loop: "{{ apache_mods }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.state | default('present') == 'present'
+  notify: restart apache
+  become: true
+
+- name: Disable desired Apache mods.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2dismod
+      - -q
+      - "{{ item.name }}"
+  register: _apache_cmd_a2dismod
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2dismod.stdout_lines"
+  failed_when: _apache_cmd_a2dismod.rc != 0
+  loop: "{{ apache_mods }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.state | default('present') != 'present'
+    - item.name in _apache_a2q_mods
+    - item.name != _apache_mpm_module
+  notify: restart apache
+  become: true
+
+# Apache vhosts
+- name: Get list of enabled Apache sites.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2query
+      - -s
+  register: _apache_cmd_a2q_sites
+  changed_when: false
+  failed_when:
+    - _apache_cmd_a2q_sites.rc != 0
+    - _apache_cmd_a2q_sites.rc != 32
+  become: true
+
+- name: Parse enabled sites from a2query's output.
+  ansible.builtin.set_fact:
+    _apache_a2q_sites: "{{ _apache_cmd_a2q_sites.stdout_lines | parse_a2query }}"
+
+- name: Deploy Apache virtual hosts configuration.
+  ansible.builtin.include_tasks:
+    file: add-vhost.yml
+    apply:
+      vars:
+        apache_vhost: "{{ item }}"
+  loop: "{{ apache_vhosts }}"
+  loop_control:
+    label: "{{ item | to_vhost_filename }}"
+
+# NOTE(zstyblik): run a2en* regardless
+# re-add check "is in a2q STDOUT", if necessary to save cycles.
+- name: Enable Apache sites with state present.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2ensite
+      - -q
+      - "{{ item | to_vhost_filename }}"
+  register: _apache_cmd_a2ensite
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2ensite.stdout_lines"
+  failed_when: _apache_cmd_a2ensite.rc != 0
+  loop: "{{ apache_vhosts }}"
+  loop_control:
+    label: "{{ item | to_vhost_filename }}"
+  when: >
+    item.state | default('present') == 'present'
+    and (
+      apache_skip_vhost_on_missing_ssl_cert is false
+      or (
+        apache_skip_vhost_on_missing_ssl_cert is true
+        and item | to_vhost_filename not in apache_ignored_ssl_sites
+      )
+    )
+  notify: restart apache
+  become: true
+
+- name: Disable Apache sites with state absent or purged.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2dissite
+      - -q
+      - "{{ item | to_vhost_filename }}"
+  register: _apache_cmd_a2dissite
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2dissite.stdout_lines"
+  failed_when: _apache_cmd_a2dissite.rc != 0
+  loop: "{{ apache_vhosts }}"
+  loop_control:
+    label: "{{ item | to_vhost_filename }}"
+  when: >
+    item.state | default('present') != 'present'
+    or (
+      apache_skip_vhost_on_missing_ssl_cert
+      and item | to_vhost_filename in apache_ignored_ssl_sites
+    )
+    and item | to_vhost_filename in _apache_a2q_sites
+  notify: restart apache
+  become: true
+
+- name: Delete Apache sites with state purged.
+  ansible.builtin.file:
+    path: "{{ apache_httpd_vhost_load_dir }}/{{ item | to_vhost_filename }}.conf"
+    state: absent
+  loop: "{{ apache_vhosts }}"
+  loop_control:
+    label: "{{ item | to_vhost_filename }}"
+  when:
+    - item.state | default('present') == 'purged'
+  become: true
+
+- name: Disable default virtual host
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2dissite
+      - -q
+      - "{{ apache_default_vhost_filename }}"
+  register: _apache_cmd_a2dissite_default
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2dissite_default.stdout_lines"
+  failed_when: _apache_cmd_a2dissite_default.rc != 0
+  when:
+    - apache_remove_default_vhost is true
+    - apache_default_vhost_filename is defined
+    - apache_default_vhost_filename
+  notify: restart apache
+  become: true

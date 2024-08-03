@@ -1,0 +1,17 @@
+---
+dependencies: []
+galaxy_info:
+  author: zstyblik
+  role_name: apache
+  description: Ansible role for management of Apache's httpd
+  company: Zdenek Styblik
+  license: MIT
+  min_ansible_version: '2.9'
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+  galaxy_tags:
+    - system
+    - apache2
+    - httpd

@@ -1,0 +1,24 @@
+---
+DOCUMENTATION:
+  name: parse_a2query
+  version_added: "1.0"
+  short_description: parse first column from a2query output
+  description:
+    - Parse the first column from a2query STDOUT lines.
+  positional: _input
+  options:
+    _input:
+      description: a2query's STDOUT.
+      type: str
+      required: true
+
+EXAMPLES: |
+  - name: Parse first column from a2query's stdout lines.
+    ansible.builtin.set_fact:
+      myvar: "{{ _apache_cmd_a2q.stdout_lines | parse_a2query }}"
+
+RETURN:
+  _value:
+    description: Fist column of a2query as a list.
+    type: list
+    elements: str

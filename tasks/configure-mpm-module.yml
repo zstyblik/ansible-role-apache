@@ -1,0 +1,27 @@
+---
+- name: Disable Apache mpm modules.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2dismod
+      - -q
+      - "{{ item }}"
+  register: _apache_cmd_a2dismod_mpm
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2dismod_mpm.stdout_lines"
+  failed_when: _apache_cmd_a2dismod_mpm.rc != 0
+  loop: "{{ _apache_a2q_mods }}"
+  when:
+    - item | regex_search('mpm_')
+  notify: restart apache
+  become: true
+
+- name: Enable selected Apache mpm module.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2enmod
+      - -q
+      - "mpm_{{ apache_mpm_module }}"
+  register: _apache_cmd_a2enmod_mpm
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2enmod_mpm.stdout_lines"
+  failed_when: _apache_cmd_a2enmod_mpm.rc != 0
+  notify: restart apache
+  become: true

@@ -1,0 +1,17 @@
+---
+- name: Apache syntax check.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/apachectl
+      - -t
+  changed_when: false
+  listen: restart apache
+  become: true
+
+- name: Restart apache.
+  ansible.builtin.service:
+    name: "{{ apache_service }}"
+    state: "{{ apache_restart_state }}"
+  changed_when: false
+  listen: restart apache
+  become: true

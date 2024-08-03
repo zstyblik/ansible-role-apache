@@ -1,0 +1,16 @@
+# Managed by Ansible.
+
+{% for binding in apache_bindings.data.values() %}
+
+{% if binding.proto == "" and binding.port != 443 %}
+Listen {{ binding.formatted }}
+{% elif binding.proto == "https" or binding.port == 443 %}
+<IfModule ssl_module>
+    Listen {{ binding.formatted }}
+</IfModule>
+
+<IfModule mod_gnutls.c>
+    Listen {{ binding.formatted }}
+</IfModule>
+{% endif %}
+{% endfor %}

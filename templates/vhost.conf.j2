@@ -1,0 +1,205 @@
+#jinja2: trim_blocks:True,lstrip_blocks:True
+{#- Set up VirtualHost -#}
+# Managed by Ansible.
+{% if apache_vhost.ssl is defined and apache_vhost.ssl %}
+<IfModule mod_ssl.c>
+{% endif %}
+<VirtualHost {{ apache_vhost.listen_ip|default('*') }}:{{ apache_vhost.port }}>
+  ServerName {{ apache_vhost.servername }}
+  {% if apache_vhost.serveraliases is defined %}
+    {% for serveralias in apache_vhost.serveraliases %}
+  ServerAlias {{ serveralias }}
+    {% endfor %}
+  {% endif %}
+  {% if apache_vhost.serveradmin is defined %}
+  ServerAdmin {{ apache_vhost.serveradmin }}
+  {% endif %}
+  {% if apache_vhost.docroot is defined %}
+
+  ## virtual host's docroot
+  DocumentRoot "{{ apache_vhost.docroot }}"
+
+  {% endif %}
+  {% if apache_vhost.add_default_charset is defined %}
+  AddDefaultCharset {{ apache_vhost.add_default_charset }}
+  {% endif %}
+{#- Define at least docroot, if no other dirs defined, with some default values. -#}
+{% if apache_vhost.directories is not defined or not apache_vhost.directories and apache_vhost.docroot is defined %}
+{% set directories = [dict([('path', apache_vhost.docroot), ('options', ['Indexes','FollowSymLinks','MultiViews'])])] %}
+{% else %}
+{% set directories = apache_vhost.directories %}
+{% endif %}
+{% if directories is defined %}
+{% for directory in directories %}
+  {% set provider = directory.provider | default('Directory') %}
+  <{{ provider | capitalize }} "{{ directory.path }}">
+  {% if directory.provider is not defined or directory.provider.lower() == 'directory' %}
+    {% if directory.index_options is defined %}
+    IndexOptions {{ directory.index_options | join(' ') }}
+    {% endif %}
+    {% if directory.index_order_default is defined %}
+    IndexOrderDefault {{ directory.index_order_default | join(' ') }}
+    {% endif %}
+    {% if directory.index_style_sheet is defined %}
+    IndexStyleSheet '{{ directory.index_style_sheet }}'
+    {% endif %}
+    {% if directory.allow_override is defined %}
+    AllowOverride {{ directory.allow_override | join(' ') }}
+    {% elif directory.provider is not defined or directory.provider.lower() == 'directory' %}
+    AllowOverride None
+    {% endif %}
+  {% endif %}
+  {% if directory.options is defined %}
+    Options {{ directory.options | join(' ') }}
+  {% endif %}
+  {% if apache_version.startswith('2.2') %}
+  Order allow,deny
+  Allow from all
+  {% else %}
+    {% if directory.require is defined and directory.require != '' and directory.require != 'unmanaged' %}
+      {% if directory.require is mapping %}
+        {% if directory.require.enforce is defined and directory.require.enforce.lower() in ['all','none','any'] %}
+    <Require{{ directory.require.enforce.capitalize() }}>
+          {% for require in directory.require.requires %}
+      Require {{ require }}
+          {% endfor %}
+    </Require{{ directory.enforce.capitalize() }}>
+        {% else %}
+          # FIXME: somehow materialize error/warning?
+        {% endif %}
+      {% else %}
+        {% if directory.require is string %}
+    Require {{ directory.require }}
+        {% else %}
+          {% for require in directory.require %}
+    Require {{ require }}
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+    {% endif %}
+    {% if directory.auth_require is defined %}
+    Require {{ directory.auth_require }}
+    {% endif %}
+    {#- if not (directory.require is defined and directory.require != '') and directory.require != 'unmanaged' and directory.auth_require is not defined -#}
+    {% if directory.require is not defined or directory.require == '' or directory.require == 'unmanaged' and directory.auth_require is not defined %}
+    Require all granted
+    {% endif %}
+  {% endif %}
+  {% if directory.directoryindex is defined and directory.directoryindex != '' %}
+    DirectoryIndex {{ directory.directoryindex }}
+  {% endif %}
+  {#- FIXME: regexp escape should be here, but jinja2 doesn't have it -#}
+  {% if directory.addhandlers is defined and directory.addhandlers|length > 0 %}
+    {% for addhandler in directory.addhandlers %}
+    <FilesMatch ".+({{ addhandler.extensions | join('|') }})$">
+        SetHandler {{ addhandler.handler }}
+    </FilesMatch>
+    {% endfor %}
+  {% endif %}
+  </{{ provider | capitalize }}>
+
+{% endfor %}
+{% endif %}
+{% if apache_vhost.extra_parameters is defined %}
+  {{ apache_vhost.extra_parameters }}
+{% endif %}
+{% set error_log = apache_vhost.error_log | default('true') %}
+{% if apache_vhost.error_log_destination is defined and apache_vhost.error_log_destination != '' %}
+{% set error_log_destination = apache_vhost.error_log_destination %}
+{% else %}
+{% set error_log_destination = "%s/%s_%s_error%s.log" | format(apache_httpd_logroot, 'https' if apache_vhost.ssl is defined and apache_vhost.ssl else 'http', apache_vhost.servername, '_ssl' if apache_vhost.ssl is defined and apache_vhost.ssl else '') %}
+{% endif %}
+{% if error_log or apache_vhost.log_level is defined and apache_vhost.log_level != '' %}
+
+  ## Logging
+{% endif %}
+{% if error_log %}
+  ErrorLog "{{ error_log_destination }}"
+{% endif %}
+{% if apache_vhost.log_level is defined %}
+  LogLevel {{ apache_vhost.log_level }}
+{% endif %}
+{% if apache_vhost.error_log_format24 is defined %}
+  {% for lfmt in apache_vhost.error_log_format24 %}
+    {% if lfmt.flag is defined %}
+  ErrorLogFormat {{ lfmt.flag }} "{{ lfmt.format }}"
+    {% else %}
+  ErrorLogFormat "{{ lfmt.format }}"
+    {% endif %}
+  {% endfor %}
+{% endif %}
+  ServerSignature Off
+{% set access_logs = apache_vhost.access_logs if apache_vhost.access_logs is defined else dict([('default',{})]) %}
+{% for log in access_logs %}
+{%   set env = "env=%s" | format(log.env) if log.env is defined else '' %}
+{%   set log_fmt = '"%s"' | format(log['format']) if 'format' in log else 'combined' %}
+{%   set destination = '' %}
+{%   if log.file is defined %}
+{%     if log.file | string | first == '/' %}
+{%       set destination = log.file %}
+{%     else %}
+{%       set destination = "%s/%s" | format(apache_httpd_logroot, log.file) %}
+{%     endif %}
+{%   elif log.syslog is defined %}
+{%     set destination = log.syslog %}
+{%   elif log.pipe is defined %}
+{%     set destination = log.pipe %}
+{%   else %}
+{%      set destination = "%s/%s_%s_access%s.log" | format(apache_httpd_logroot, 'https' if apache_vhost.ssl is defined and apache_vhost.ssl else 'http', apache_vhost.servername, '_ssl' if apache_vhost.ssl is defined and apache_vhost.ssl else '') %}
+{%   endif %}
+  CustomLog "{{ destination }}" {{ log_fmt }} {{ env }}
+{% endfor %}
+{% if apache_vhost.rewrites is defined %}
+
+  ## Rewrite rules
+  RewriteEngine On
+{% if apache_vhost.rewrite_inherit is defined and apache_vhost.rewrite_inherit %}
+  RewriteOptions Inherit
+{% endif %}
+{% if apache_vhost.rewrite_base is defined %}
+  RewriteBase {{ apache_vhost.rewrite_base }}
+{% endif %}
+{#- ORDER: RewriteBase, RewriteCond, RewriteMap, RewriteRule -#}
+{% for rewrite_details in apache_vhost.rewrites %}
+{% if rewrite_details.rewrite_cond is defined %}
+{% for rewrite_cond in rewrite_details.rewrite_cond %}
+  RewriteCond {{ rewrite_cond }}
+{% endfor %}
+{% endif %}
+{% if rewrite_details.rewrite_rule is defined %}
+{% for rewrite_rule in rewrite_details.rewrite_rule %}
+  RewriteRule {{ rewrite_rule }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if apache_vhost.ssl is defined and apache_vhost.ssl %}
+  ## SSL directives
+  SSLEngine on
+{%   for ssl_item in apache_vhost.ssl %}
+  SSLCertificateFile      "{{ ssl_item.ssl_cert }}"
+  SSLCertificateKeyFile   "{{ ssl_item.ssl_key }}"
+{%     if ssl_item.ssl_cacerts_dir is defined %}
+  SSLCACertificatePath    "{{ ssl_item.ssl_cacerts_dir }}"
+{%     endif %}
+{%   endfor %}
+{% endif %}
+{% if apache_vhost.additional_includes is defined %}
+  ## Load additional static includes
+{% for include in apache_vhost.additional_includes %}
+{% if apache_version.startswith('2.4') and apache_vhost.use_optional_includes is defined and apache_vhost.use_optional_includes %}
+  IncludeOptional "{{ include }}"
+{% else %}
+  Include "{{ include }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if apache_vhost.custom_fragment is defined %}
+
+  ## Custom fragment
+  {{ apache_vhost.custom_fragment }}
+{% endif %}
+</VirtualHost>
+{% if apache_vhost.ssl is defined and apache_vhost.ssl %}
+</IfModule>
+{% endif %}
