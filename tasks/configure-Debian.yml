@@ -190,7 +190,7 @@
   changed_when: false
   failed_when:
     - _apache_cmd_a2q_sites.rc != 0
-    - _apache_cmd_a2q_sites.rc != 32
+    - "'No site matches' not in _apache_cmd_a2q_sites.stderr"
   become: true
 
 - name: Parse enabled sites from a2query's output.
