@@ -274,7 +274,9 @@
       - "{{ apache_default_vhost_filename }}"
   register: _apache_cmd_a2dissite_default
   changed_when: "'To activate the new configuration' in _apache_cmd_a2dissite_default.stdout_lines"
-  failed_when: _apache_cmd_a2dissite_default.rc != 0
+  failed_when:
+    - _apache_cmd_a2dissite_default.rc != 0
+    - "_apache_cmd_a2dissite_default.stderr is not search('ERROR: Site .+ does not exist!')"
   when:
     - apache_remove_default_vhost is true
     - apache_default_vhost_filename is defined
