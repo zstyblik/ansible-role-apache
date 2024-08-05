@@ -22,6 +22,26 @@ I might add support for some other OS, if and when I'm bored.
 * allow to enable/disable config files
 * allow to enable/disable modules
 
+#### Known limitations
+
+##### Ports
+
+* if there are no virtual hosts, httpd should listen at port 80 and 443 as is
+  by default in Debian.
+* ports are generated **ONLY** from managed(defined) virtual hosts. There is
+  currently no way around this.
+
+##### Virtual Hosts
+
+Virtual host filename is assembled from priority, protocol and servername. If
+any of these change, new filename will be created and the old one will be left
+behind since unmanaged stuff is left alone. This is kind of suboptimal.
+
+One way around this is either duplicate the whole virtual host configuration or
+create a minimal stub with identical combination of port, servername and
+ssl/no-ssl and `state: absent`. Then the former virtual host should get
+disabled and new one deployed.
+
 ## Requirements
 
 None.
