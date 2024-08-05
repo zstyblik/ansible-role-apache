@@ -1,0 +1,56 @@
+---
+- name: Check conf configuration against spec file
+  ansible.builtin.validate_argument_spec:
+    argument_spec: |
+      {{
+        (
+          lookup(
+            'ansible.builtin.file',
+            'specs/apache_conf_argument_specs.yml'
+          ) | from_yaml
+        )['argument_specs']['apache_conf_item']['options']
+      }}
+    provided_arguments: "{{ _apache_conf_item }}"
+
+- name: Create Apache config file.
+  ansible.builtin.copy:
+    content: "{{ _apache_conf_item.conf_content }}"
+    dest: "{{ apache_httpd_conf_load_dir }}/{{ _apache_conf_item.name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - _apache_conf_item.state | default('present') == 'present'
+    - _apache_conf_item.conf_content is defined
+  become: true
+
+# NOTE(zstyblik): run a2en* regardless
+# re-add check "is in a2q STDOUT", if necessary to save cycles.
+- name: Enable Apache config file.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2enconf
+      - -q
+      - "{{ _apache_conf_item.name }}"
+  register: _apache_cmd_a2enconf
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2enconf.stdout_lines"
+  failed_when: _apache_cmd_a2enconf.rc != 0
+  when:
+    - _apache_conf_item.state | default('present') == 'present'
+  notify: restart apache
+  become: true
+
+- name: Disable Apache config file.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2disconf
+      - -q
+      - "{{ _apache_conf_item.name }}"
+  register: _apache_cmd_a2disconf
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2disconf.stdout_lines"
+  failed_when: _apache_cmd_a2disconf.rc != 0
+  when:
+    - _apache_conf_item.state | default('present') != 'present'
+    - _apache_conf_item.name in _apache_a2q_confs
+  notify: restart apache
+  become: true

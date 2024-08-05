@@ -13,8 +13,12 @@ apache_vhosts:
 # Only used on Debian/Ubuntu.
 # Example:
 # apache_mods:
-#   - name: rewrite
+#   - name: ssl
 #     state: present
+#     # Create or overwrite .conf file with the following content.
+#     # This can be used to override/neuter default mod configuration.
+#     conf_content: |
+#       SSLProtocol all -SSLv2 -SSLv3 -TLSv1
 apache_mods: []
 
 # Only used on Debian/Ubuntu.
@@ -22,6 +26,11 @@ apache_mods: []
 # apache_confs:
 #   - name: trace
 #     state: absent
+#   - name: my_config
+#     state: present
+#     # Create or overwrite .conf file with the following content.
+#     conf_content: |
+#       TraceEnable On
 apache_confs: []
 
 # httpd.conf

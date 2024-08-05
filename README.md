@@ -83,10 +83,16 @@ There are no extra dependencies as far as Ansible goes.
     apache_mods:
       - name: rewrite
         state: present
+      - name: ssl
+        conf_content: |
+          SSLProtocol all -SSLv2 -SSLv3 -TLSv1
 
     apache_confs:
       - name: serve-cgi-bin
         state: absent
+      - name: my_config
+        conf_content: |
+          TraceEnable On
   roles:
      - role: zstyblik.apache
 ```

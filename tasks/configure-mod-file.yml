@@ -1,0 +1,57 @@
+---
+- name: Check mod configuration against spec file
+  ansible.builtin.validate_argument_spec:
+    argument_spec: |
+      {{
+        (
+          lookup(
+            'ansible.builtin.file',
+            'specs/apache_conf_argument_specs.yml'
+          ) | from_yaml
+        )['argument_specs']['apache_conf_item']['options']
+      }}
+    provided_arguments: "{{ _apache_mod_item }}"
+
+- name: Create config file for Apache module.
+  ansible.builtin.copy:
+    content: "{{ _apache_mod_item.conf_content }}"
+    dest: "{{ apache_httpd_mod_load_dir }}/{{ _apache_mod_item.name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - _apache_mod_item.state | default('present') == 'present'
+    - _apache_mod_item.conf_content is defined
+  become: true
+
+# NOTE(zstyblik): run a2en* regardless
+# re-add check "is in a2q STDOUT", if necessary to save cycles.
+- name: Enable Apache module.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2enmod
+      - -q
+      - "{{ _apache_mod_item.name }}"
+  register: _apache_cmd_a2enmod
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2enmod.stdout_lines"
+  failed_when: _apache_cmd_a2enmod.rc != 0
+  when:
+    - _apache_mod_item.state | default('present') == 'present'
+  notify: restart apache
+  become: true
+
+- name: Disable Apache module.
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/a2dismod
+      - -q
+      - "{{ _apache_mod_item.name }}"
+  register: _apache_cmd_a2dismod
+  changed_when: "'To activate the new configuration' in _apache_cmd_a2dismod.stdout_lines"
+  failed_when: _apache_cmd_a2dismod.rc != 0
+  when:
+    - _apache_mod_item.state | default('present') != 'present'
+    - _apache_mod_item.name in _apache_a2q_mods
+    - _apache_mod_item.name != _apache_mpm_module
+  notify: restart apache
+  become: true

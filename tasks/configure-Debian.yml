@@ -104,81 +104,22 @@
   ansible.builtin.set_fact:
     _apache_a2q_confs: "{{ _apache_cmd_a2q_confs.stdout_lines | parse_a2query }}"
 
-# NOTE(zstyblik): run a2en* regardless
-# re-add check "is in a2q STDOUT", if necessary to save cycles.
-- name: Enable desired Apache confs.
-  ansible.builtin.command:
-    argv:
-      - /usr/sbin/a2enconf
-      - -q
-      - "{{ item.name }}"
-  register: _apache_cmd_a2enconf
-  changed_when: "'To activate the new configuration' in _apache_cmd_a2enconf.stdout_lines"
-  failed_when: _apache_cmd_a2enconf.rc != 0
+- name: Configure Apache configuration files(fragment).
+  ansible.builtin.include_tasks:
+    file: configure-conf-file.yml
   loop: "{{ apache_confs }}"
   loop_control:
-    label: "{{ item.name }}"
-  when:
-    - item.state | default('present') == 'present'
-  notify: restart apache
-  become: true
-
-- name: Disable desired Apache confs.
-  ansible.builtin.command:
-    argv:
-      - /usr/sbin/a2disconf
-      - -q
-      - "{{ item.name }}"
-  register: _apache_cmd_a2disconf
-  changed_when: "'To activate the new configuration' in _apache_cmd_a2disconf.stdout_lines"
-  failed_when: _apache_cmd_a2disconf.rc != 0
-  loop: "{{ apache_confs }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when:
-    - item.state | default('present') != 'present'
-    - item.name in _apache_a2q_confs
-  notify: restart apache
-  become: true
+    label: "{{ _apache_conf_item.name | default('unknown') }}"
+    loop_var: _apache_conf_item
 
 # Apache mods
-# NOTE(zstyblik): run a2en* regardless
-# re-add check "is in a2q STDOUT", if necessary to save cycles.
-- name: Enable desired Apache mods.
-  ansible.builtin.command:
-    argv:
-      - /usr/sbin/a2enmod
-      - -q
-      - "{{ item.name }}"
-  register: _apache_cmd_a2enmod
-  changed_when: "'To activate the new configuration' in _apache_cmd_a2enmod.stdout_lines"
-  failed_when: _apache_cmd_a2enmod.rc != 0
+- name: Configure Apache modules.
+  ansible.builtin.include_tasks:
+    file: configure-mod-file.yml
   loop: "{{ apache_mods }}"
   loop_control:
-    label: "{{ item.name }}"
-  when:
-    - item.state | default('present') == 'present'
-  notify: restart apache
-  become: true
-
-- name: Disable desired Apache mods.
-  ansible.builtin.command:
-    argv:
-      - /usr/sbin/a2dismod
-      - -q
-      - "{{ item.name }}"
-  register: _apache_cmd_a2dismod
-  changed_when: "'To activate the new configuration' in _apache_cmd_a2dismod.stdout_lines"
-  failed_when: _apache_cmd_a2dismod.rc != 0
-  loop: "{{ apache_mods }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when:
-    - item.state | default('present') != 'present'
-    - item.name in _apache_a2q_mods
-    - item.name != _apache_mpm_module
-  notify: restart apache
-  become: true
+    label: "{{ _apache_mod_item.name | default('unknown') }}"
+    loop_var: _apache_mod_item
 
 # Apache vhosts
 - name: Get list of enabled Apache sites.
