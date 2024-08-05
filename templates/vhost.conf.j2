@@ -101,7 +101,7 @@
 {% endfor %}
 {% endif %}
 {% if apache_vhost.extra_parameters is defined %}
-  {{ apache_vhost.extra_parameters }}
+  {{ apache_vhost.extra_parameters | indent(2) }}
 {% endif %}
 {% set error_log = apache_vhost.error_log | default('true') %}
 {% if apache_vhost.error_log_destination is defined and apache_vhost.error_log_destination != '' %}

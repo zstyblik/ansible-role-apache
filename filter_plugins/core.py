@@ -57,14 +57,14 @@ def parse_a2query(stdout):
 def to_vhost_filename(vhost):
     """Turn apache_vhost item(dict) into a filename."""
     try:
-        priority = int(vhost.get("priority", 25))
+        priority = int(vhost.get("priority", 200))
         if "ssl" in vhost and vhost["ssl"]:
             proto = "https"
         else:
             proto = "http"
 
         servername = vhost["servername"]
-        result = "{:d}-{:s}_{:s}".format(priority, proto, servername)
+        result = "{:03d}-{:s}_{:s}".format(priority, proto, servername)
     except Exception as exception:
         raise AnsibleFilterError(
             "to_vhost_filename - {:s}".format(to_native(exception)),

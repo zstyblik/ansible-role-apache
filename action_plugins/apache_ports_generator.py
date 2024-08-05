@@ -49,7 +49,10 @@ class ActionModule(ActionBase):
 
         vhosts = self._task.args.get("vhosts", [])
         if not vhosts:
-            vhosts = [{"listen_ip": "", "port": 80, "ssl": False}]
+            vhosts = [
+                {"listen_ip": "", "port": 80, "ssl": {}},
+                {"listen_ip": "", "port": 443, "ssl": {}},
+            ]
 
         # Ref. https://httpd.apache.org/docs/2.4/bind.html
         # Structure:
@@ -84,10 +87,10 @@ class ActionModule(ActionBase):
             if port not in bindings:
                 bindings[port] = {}
 
-            ssl = vhost.get("ssl", False)
+            ssl = vhost.get("ssl", {})
             # According to documentation, https is default proto for port 443.
             # Therefore there is no need to specify it.
-            if ssl is True and port != 443:
+            if ssl and port != 443:
                 ssl = "https"
             else:
                 ssl = ""

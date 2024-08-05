@@ -1,0 +1,20 @@
+%YAML 1.2
+---
+argument_specs:
+  apache_conf_item:
+    short_description: Specification of Apache httpd conf/module item.
+    description: Specification of Apache httpd conf/module item.
+    options:
+      name:
+        description: Name of Apache's httpd configuration file(fragment).
+        required: true
+        type: str
+      state:
+        description: State of configuration file - present, absent etc.
+        required: false
+        type: str
+        choices: ['present', 'absent', 'purged']
+      conf_content:
+        description: Content of configuration file itself.
+        required: false
+        type: str
