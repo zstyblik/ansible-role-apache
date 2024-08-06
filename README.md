@@ -28,8 +28,8 @@ I might add support for some other OS, if and when I'm bored.
 
 * if there are no virtual hosts, httpd should listen at port 80 and 443 as is
   by default in Debian.
-* ports are generated **ONLY** from managed(defined) virtual hosts. There is
-  currently no way around this.
+* ports are generated **ONLY** from managed(defined) virtual hosts. It's
+  possible to define additional `Listen` directives via `apache_confs`.
 
 ##### Virtual Hosts
 
