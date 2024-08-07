@@ -11,6 +11,9 @@ galaxy_info:
     - name: Debian
       versions:
         - bookworm
+    - name: Ubuntu
+      versions:
+        - jammy
   galaxy_tags:
     - system
     - apache2
