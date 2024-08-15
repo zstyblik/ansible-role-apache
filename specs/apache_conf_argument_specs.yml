@@ -15,6 +15,13 @@ argument_specs:
         type: str
         choices: ['present', 'absent', 'purged']
       conf_content:
-        description: Content of configuration file itself.
+        description: |
+          Content of configuration file itself. Use it for conf/mod
+          configuration directives.
+        required: false
+        type: str
+      mod_content:
+        description: |
+          Content of module file itself. Use it for "LoadModule" directive.
         required: false
         type: str

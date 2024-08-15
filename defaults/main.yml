@@ -77,26 +77,15 @@ apache_httpd_file_e_tag: null
 apache_httpd_use_canonical_name: null
 # NOTE(zstyblik): This seems to be for freebsd
 apache_httpd_apxs_workaround: false
-# NOTE(zstyblik): probably distro specific!
+# NOTE(zstyblik): distro specific
 apache_httpd_dir: "/etc/apache2"
-apache_httpd_conf_dir: "/etc/apache2"
-apache_httpd_mod_load_dir: "{{ apache_httpd_conf_dir }}/mods-available"
-apache_httpd_mod_enable_dir: "{{ apache_httpd_conf_dir }}/mods-enabled"
-apache_httpd_conf_load_dir: "{{ apache_httpd_conf_dir }}/conf-available"
-apache_httpd_conf_enable_dir: "{{ apache_httpd_conf_dir }}/conf-enabled"
-# NOTE(zstyblik): distro specific and useless on Debian
-apache_httpd_confd_dir: null
-apache_httpd_vhost_load_dir: "{{ apache_httpd_dir }}/sites-available"
-apache_httpd_vhost_enable_dir: "{{ apache_httpd_dir }}/sites-enabled"
-apache_httpd_ports_file: "{{ apache_httpd_dir }}/ports.conf"
 # Example:
 # apache_httpd_log_formats:
 #   myformat: "%{User-agent}i"
 apache_httpd_log_formats: {}
-apache_httpd_vhost_include_pattern: "*"
 apache_httpd_ldap_trusted_mode: null
 apache_httpd_ldap_verify_server_cert: null
-apache_httpd_error_documents_path: "/usr/share/apache2/error"
+apache_httpd_error_documents: true
 
 # NOTE(zstyblik): these might be removed in (near) future, because I see no
 # point in having these "defaults" around.

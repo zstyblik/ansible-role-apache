@@ -106,7 +106,7 @@
 
 - name: Configure Apache configuration files(fragment).
   ansible.builtin.include_tasks:
-    file: configure-conf-file.yml
+    file: configure-conf-file-Debian.yml
   loop: "{{ apache_confs }}"
   loop_control:
     label: "{{ _apache_conf_item.name | default('unknown') }}"
@@ -115,7 +115,7 @@
 # Apache mods
 - name: Configure Apache modules.
   ansible.builtin.include_tasks:
-    file: configure-mod-file.yml
+    file: configure-mod-file-Debian.yml
   loop: "{{ apache_mods }}"
   loop_control:
     label: "{{ _apache_mod_item.name | default('unknown') }}"
@@ -198,7 +198,7 @@
 
 - name: Delete Apache sites with state purged.
   ansible.builtin.file:
-    path: "{{ apache_httpd_vhost_load_dir }}/{{ item | to_vhost_filename }}.conf"
+    path: "{{ apache_httpd_vhost_deploy_dir }}/{{ item | to_vhost_filename }}.conf"
     state: absent
   loop: "{{ apache_vhosts }}"
   loop_control:

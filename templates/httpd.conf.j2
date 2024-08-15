@@ -10,8 +10,10 @@ ServerRoot "{{ apache_httpd_server_root }}"
 {#- Actually >= 2.4.2, but the patch version is not provided -#}
 {% if apache_httpd_default_runtime_dir and apache_version.startswith('2.4') +%}
 DefaultRuntimeDir {{ apache_httpd_default_runtime_dir }}
-{% endif %}
+{% endif +%}
+{% if apache_httpd_pidfile %}
 PidFile {{ apache_httpd_pidfile }}
+{% endif %}
 Timeout {{ apache_httpd_timeout }}
 KeepAlive {{ 'On' if apache_httpd_keepalive.lower() == 'on' else 'Off' }}
 MaxKeepAliveRequests {{ apache_httpd_max_keepalive_requests }}
@@ -124,11 +126,24 @@ UseCanonicalName {{ apache_httpd_use_canonical_name }}
 #LoadModule fake_module libexec/apache22/mod_fake.so
 {% endif %}
 
-Include "{{ apache_httpd_mod_enable_dir }}/*.load"
-{% if apache_httpd_mod_enable_dir != apache_httpd_confd_dir and apache_httpd_mod_enable_dir != apache_httpd_vhost_enable_dir and apache_httpd_mod_enable_dir != apache_httpd_conf_enable_dir %}
-Include "{{ apache_httpd_mod_enable_dir }}/*.conf"
+{% if apache_version.startswith('2.4') %}
+{% set apache_httpd_include_type = "IncludeOptional" %}
+{% else %}
+{% set apache_httpd_include_type = "Include" %}
 {% endif %}
+{% if apache_httpd_mod_include_dir %}
+{{ apache_httpd_include_type }} "{{ apache_httpd_mod_include_dir }}/{{ apache_httpd_mod_include_pattern }}"
+{% endif %}
+{% if apache_httpd_mod_conf_include_dir %}
+{{ apache_httpd_include_type }} "{{ apache_httpd_mod_conf_include_dir }}/{{ apache_httpd_mod_conf_include_pattern }}"
+{% endif %}
+{%
+  if apache_httpd_ports_file
+  and apache_httpd_mod_include_dir not in apache_httpd_ports_file
+  and apache_httpd_conf_include_dir not in apache_httpd_ports_file
+%}
 Include "{{ apache_httpd_ports_file }}"
+{% endif %}
 
 {% if 'vhost_combined' not in apache_httpd_log_formats %}
 LogFormat "%v:%p %h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\"" vhost_combined
@@ -154,26 +169,15 @@ LogFormat "{{ fmt }}" {{ nickname }}
   {% endfor %}
 {% endif %}
 
-{% if apache_httpd_conf_enable_dir %}
-{%   if apache_version.startswith('2.4') %}
-IncludeOptional "{{ apache_httpd_conf_enable_dir }}/*.conf"
-{%   else %}
-Include "{{ apache_httpd_conf_enable_dir }}/*.conf"
-{%   endif %}
+{%
+   if apache_httpd_conf_include_dir
+   and (apache_httpd_conf_include_dir != apache_httpd_mod_include_dir and apache_httpd_mod_include_pattern != apache_httpd_conf_include_pattern)
+   and (apache_httpd_conf_include_dir != apache_httpd_mod_conf_include_dir and apache_httpd_conf_include_pattern != apache_httpd_mod_conf_include_pattern)
+%}
+{{ apache_httpd_include_type }} "{{ apache_httpd_conf_include_dir }}/{{ apache_httpd_conf_include_pattern }}"
 {% endif %}
-{% if apache_httpd_confd_dir %}
-{%   if apache_version.startswith('2.4') %}
-IncludeOptional "{{ apache_httpd_confd_dir }}/*.conf"
-{%   else %}
-Include "{{ apache_httpd_confd_dir }}/*.conf"
-{%   endif %}
-{% endif %}
-{% if apache_httpd_vhost_enable_dir != apache_httpd_confd_dir and apache_httpd_vhost_enable_dir != apache_httpd_conf_enable_dir %}
-    {% if apache_version.startswith('2.4') %}
-IncludeOptional "{{ apache_httpd_vhost_enable_dir }}/{{ apache_httpd_vhost_include_pattern }}"
-    {% else %}
-Include "{{ apache_httpd_vhost_enable_dir }}/{{ apache_httpd_vhost_include_pattern }}"
-    {% endif %}
+{% if apache_httpd_vhost_include_dir %}
+{{ apache_httpd_include_type }} "{{ apache_httpd_vhost_include_dir }}/{{ apache_httpd_vhost_include_pattern }}"
 {% endif %}
 {% if apache_httpd_ldap_verify_server_cert %}
 LDAPVerifyServerCert {{ apache_httpd_ldap_verify_server_cert }}
@@ -182,16 +186,16 @@ LDAPVerifyServerCert {{ apache_httpd_ldap_verify_server_cert }}
 LDAPTrustedMode {{ apache_httpd_ldap_trusted_mode }}
 {% endif %}
 
-{% if apache_httpd_error_documents_path %}
+{% if apache_httpd_error_documents %}
 # The internationalized error documents require mod_alias, mod_include
 # and mod_negotiation.
 <IfModule mod_negotiation.c>
   <IfModule mod_include.c>
     <IfModule mod_alias.c>
 
-      Alias /error/ "/usr/share/apache2/error/"
+      Alias /error/ "{{ apache_httpd_error_documents_path }}"
 
-      <Directory "/usr/share/apache2/error">
+      <Directory "{{ apache_httpd_error_documents_path.rstrip('/') }}">
         Options IncludesNoExec
         AddOutputFilter Includes html
         AddHandler type-map var
