@@ -1,0 +1,40 @@
+---
+apache_service: httpd
+apache_daemon: httpd
+apache_daemon_path: /usr/sbin/
+apache_httpd_server_root: /etc/httpd
+apache_httpd_pidfile: null
+apache_httpd_error_log: "error_log"
+apache_httpd_error_documents_path: "/usr/share/httpd/error/"
+
+apache_httpd_dir: /etc/httpd
+#
+apache_httpd_conf_deploy_dir: "{{ apache_httpd_dir }}/conf.d"
+apache_httpd_conf_include_dir: "{{ apache_httpd_dir }}/conf.d"
+apache_httpd_conf_include_pattern: "*.conf"
+#
+apache_httpd_mod_conf_deploy_dir: "{{ apache_httpd_dir }}/conf.d"
+apache_httpd_mod_conf_include_dir: "{{ apache_httpd_dir }}/conf.d"
+apache_httpd_mod_conf_include_pattern: "*.conf"
+#
+apache_httpd_mod_deploy_dir: "{{ apache_httpd_dir }}/conf.modules.d"
+apache_httpd_mod_include_dir: "{{ apache_httpd_dir }}/conf.modules.d"
+apache_httpd_mod_include_pattern: "*.conf"
+#
+apache_httpd_vhost_deploy_dir: "{{ apache_httpd_dir }}/sites.d"
+apache_httpd_vhost_include_dir: "{{ apache_httpd_dir }}/sites.d"
+apache_httpd_vhost_include_pattern: "*.conf"
+#
+apache_httpd_ports_file: "{{ apache_httpd_conf_deploy_dir }}/ports.conf"
+
+# NOTE(zstyblik): without .conf
+apache_default_vhost_filename: welcome
+
+__apache_packages:
+  - httpd
+  - httpd-devel
+
+__apache_httpd_user: apache
+__apache_httpd_group: apache
+__apache_httpd_logroot: logs
+__apache_httpd_default_runtime_dir: null

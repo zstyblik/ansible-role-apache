@@ -1,0 +1,6 @@
+# Managed by Ansible.
+# Minimal workaround for RedHat and the fact that some defaults are in
+# httpd.conf instead of config fragment.
+<IfModule mime_module>
+  TypesConfig /etc/mime.types
+</IfModule>

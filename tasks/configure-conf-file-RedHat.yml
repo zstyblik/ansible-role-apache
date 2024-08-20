@@ -1,0 +1,35 @@
+---
+- name: Check conf configuration against spec file
+  ansible.builtin.validate_argument_spec:
+    argument_spec: |
+      {{
+        (
+          lookup(
+            'ansible.builtin.file',
+            'specs/apache_conf_argument_specs.yml'
+          ) | from_yaml
+        )['argument_specs']['apache_conf_item']['options']
+      }}
+    provided_arguments: "{{ _apache_conf_item }}"
+
+- name: Create Apache config file.
+  ansible.builtin.copy:
+    content: "{{ _apache_conf_item.conf_content }}"
+    dest: "{{ apache_httpd_conf_deploy_dir }}/{{ _apache_conf_item.name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - _apache_conf_item.state | default('present') == 'present'
+    - _apache_conf_item.conf_content is defined
+  notify: restart apache
+  become: true
+
+- name: Disable Apache config file.
+  ansible.builtin.file:
+    path: "{{ apache_httpd_conf_deploy_dir }}/{{ _apache_conf_item.name }}.conf"
+    state: absent
+  when:
+    - _apache_conf_item.state | default('present') != 'present'
+  notify: restart apache
+  become: true

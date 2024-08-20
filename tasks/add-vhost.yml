@@ -1,16 +1,4 @@
 ---
-- name: Generate virtual host config file.
-  ansible.builtin.template:
-    src: "{{ apache_vhosts_template }}"
-    dest: "{{ apache_httpd_vhost_load_dir }}/{{ apache_vhost | to_vhost_filename }}.conf"
-    owner: root
-    group: root
-    mode: '0644'
-  when:
-    - apache_vhost.state | default('present') == 'present'
-  notify: restart apache
-  become: true
-
 - name: Check if SSL cert/key files are defined and exist.
   ansible.builtin.include_tasks:
     file: check-ssl-cert.yml
@@ -26,3 +14,25 @@
     - apache_skip_vhost_on_missing_ssl_cert
     - apache_vhost.state | default('present') == 'present'
     - apache_vhost.ssl is defined
+
+- name: Generate virtual host config file.
+  ansible.builtin.template:
+    src: "{{ apache_vhosts_template }}"
+    dest: "{{ apache_httpd_vhost_deploy_dir }}/{{ apache_vhost | to_vhost_filename }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  # NOTE(zstyblik):
+  # 1. it's ok to deploy file on Debian no matter what.
+  # 2. OR VHost either will be or won't be in apache_ignored_ssl_sites.
+  when: |
+    (
+      apache_vhost.state | default('present') == 'present'
+      and ansible_os_family != 'RedHat'
+    )
+    or (
+      apache_vhost.state | default('present') == 'present'
+      and item | to_vhost_filename not in apache_ignored_ssl_sites
+    )
+  notify: restart apache
+  become: true

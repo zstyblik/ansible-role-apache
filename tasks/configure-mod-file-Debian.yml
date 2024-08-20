@@ -15,13 +15,14 @@
 - name: Create config file for Apache module.
   ansible.builtin.copy:
     content: "{{ _apache_mod_item.conf_content }}"
-    dest: "{{ apache_httpd_mod_load_dir }}/{{ _apache_mod_item.name }}.conf"
+    dest: "{{ apache_httpd_mod_conf_deploy_dir }}/{{ _apache_mod_item.name }}.conf"
     owner: root
     group: root
     mode: '0644'
   when:
     - _apache_mod_item.state | default('present') == 'present'
     - _apache_mod_item.conf_content is defined
+  notify: restart apache
   become: true
 
 # NOTE(zstyblik): run a2en* regardless

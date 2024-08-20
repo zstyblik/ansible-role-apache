@@ -1,0 +1,121 @@
+---
+- name: Initialize helper variables.
+  ansible.builtin.set_fact:
+    apache_ignored_ssl_sites: []
+    apache_managed_sites: []
+
+- name: Generate Apache httpd configuration file.
+  ansible.builtin.template:
+    src: "{{ apache_httpd_template }}"
+    dest: "{{ apache_httpd_dir }}/conf/httpd.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart apache
+  become: true
+
+- name: Deploy httpd.conf workaround for RedHat.
+  ansible.builtin.template:
+    src: "httpd.conf.RedHat.j2"
+    dest: "{{ apache_httpd_conf_deploy_dir }}/00-ansible.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart apache
+  become: true
+
+- name: Validate virtual host configuration.
+  ansible.builtin.include_tasks:
+    file: validate-vhost.yml
+    apply:
+      vars:
+        apache_vhost: "{{ item }}"
+  loop: "{{ apache_vhosts }}"
+  # NOTE(zstyblik): cannot use to_vhost_filename until validated.
+  loop_control:
+    label: "{{ item.servername | default('unknown') }}:{{ item.port | default(0) }}"
+
+- name: Gather Binding to Addresses and Ports information.
+  apache_ports_generator:
+    vhosts: "{{ apache_vhosts }}"
+  register: apache_bindings
+
+- name: Configure Apache ports.
+  ansible.builtin.template:
+    src: "{{ apache_ports_template }}"
+    dest: "{{ apache_httpd_ports_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart apache
+  become: true
+
+# Apache confs
+- name: Configure Apache configuration files(fragment).
+  ansible.builtin.include_tasks:
+    file: configure-conf-file-RedHat.yml
+  loop: "{{ apache_confs }}"
+  loop_control:
+    label: "{{ _apache_conf_item.name | default('unknown') }}"
+    loop_var: _apache_conf_item
+
+# Apache mods
+- name: Configure Apache modules.
+  ansible.builtin.include_tasks:
+    file: configure-mod-file-RedHat.yml
+  loop: "{{ apache_mods }}"
+  loop_control:
+    label: "{{ _apache_mod_item.name | default('unknown') }}"
+    loop_var: _apache_mod_item
+
+# NOTE(zstyblik): I just couldn't get over the fact that everything should be
+# in one directory.
+- name: Create directory for virtual hosts.
+  ansible.builtin.file:
+    path: "{{ apache_httpd_vhost_deploy_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Deploy Apache virtual hosts configuration.
+  ansible.builtin.include_tasks:
+    file: add-vhost.yml
+    apply:
+      vars:
+        apache_vhost: "{{ item }}"
+  loop: "{{ apache_vhosts }}"
+  loop_control:
+    label: "{{ item | to_vhost_filename }}"
+
+- name: Disable Apache sites with state absent or purged.
+  ansible.builtin.file:
+    path: "{{ apache_httpd_vhost_deploy_dir }}/{{ item | to_vhost_filename }}.conf"
+    state: absent
+  loop: "{{ apache_vhosts }}"
+  loop_control:
+    label: "{{ item | to_vhost_filename }}"
+  when: >
+    item.state | default('present') != 'present'
+    or (
+      apache_skip_vhost_on_missing_ssl_cert
+      and item | to_vhost_filename in apache_ignored_ssl_sites
+    )
+  notify: restart apache
+  become: true
+
+# NOTE(zstyblik): file MUST remain in place, otherwise it will be
+# resurrected by httpd update. Therefore, comment out lines which aren't
+# already commented out.
+- name: Disable default virtual host
+  ansible.builtin.replace:
+    path: "{{ apache_httpd_vhost_deploy_dir }}/{{ apache_default_vhost_filename }}.conf"
+    regexp: "^(?!#)(.*)"
+    replace: '# \1'
+  when:
+    - apache_remove_default_vhost is true
+    - apache_default_vhost_filename is defined
+    - apache_default_vhost_filename
+  notify: restart apache
+  become: true
