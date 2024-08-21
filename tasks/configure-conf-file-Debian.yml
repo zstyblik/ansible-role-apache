@@ -15,7 +15,7 @@
 - name: Create Apache config file.
   ansible.builtin.copy:
     content: "{{ _apache_conf_item.conf_content }}"
-    dest: "{{ apache_httpd_mod_conf_deploy_dir }}/{{ _apache_conf_item.name }}.conf"
+    dest: "{{ apache_httpd_conf_deploy_dir }}/{{ _apache_conf_item.name }}.conf"
     owner: root
     group: root
     mode: '0644'
