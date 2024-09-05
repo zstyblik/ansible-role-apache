@@ -2,4 +2,6 @@
 set -e
 set -u
 
+cd "$(dirname "${0}")/.."
+
 ansible-lint .

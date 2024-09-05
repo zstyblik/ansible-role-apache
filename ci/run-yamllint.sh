@@ -2,4 +2,6 @@
 set -e
 set -u
 
-yamllint .
+cd "$(dirname "${0}")/.."
+
+yamllint -s .
