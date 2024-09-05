@@ -79,8 +79,8 @@ class ActionModule(ActionBase):
                 raise AnsibleError(msg) from exception
             except ValueError as exception:
                 msg = "failed to convert port '{}' of vhost '{}' to int".format(
-                    vhost.get("servername", "unknown"),
                     vhost.get("port", None),
+                    vhost.get("servername", "unknown"),
                 )
                 raise AnsibleError(msg) from exception
 
