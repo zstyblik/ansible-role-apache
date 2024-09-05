@@ -84,6 +84,15 @@ class ActionModule(ActionBase):
                 )
                 raise AnsibleError(msg) from exception
 
+            if port < 0 or port > 65535:
+                raise AnsibleError(
+                    "port number '{}' of vhost '{}' is out of 0-65535 "
+                    "range".format(
+                        port,
+                        vhost.get("servername", "unknown"),
+                    )
+                )
+
             if port not in bindings:
                 bindings[port] = {}
 
