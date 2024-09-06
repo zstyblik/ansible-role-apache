@@ -4,4 +4,4 @@ set -u
 
 cd "$(dirname "${0}")/.."
 
-ansible-lint .
+python3 -m pytest -vv .

@@ -77,12 +77,21 @@ class ActionModule(ActionBase):
                     vhost.get("servername", "unknown")
                 )
                 raise AnsibleError(msg) from exception
-            except ValueError as exception:
+            except (TypeError, ValueError) as exception:
                 msg = "failed to convert port '{}' of vhost '{}' to int".format(
-                    vhost.get("servername", "unknown"),
                     vhost.get("port", None),
+                    vhost.get("servername", "unknown"),
                 )
                 raise AnsibleError(msg) from exception
+
+            if port < 0 or port > 65535:
+                raise AnsibleError(
+                    "port number '{}' of vhost '{}' is out of 0-65535 "
+                    "range".format(
+                        port,
+                        vhost.get("servername", "unknown"),
+                    )
+                )
 
             if port not in bindings:
                 bindings[port] = {}
@@ -91,16 +100,16 @@ class ActionModule(ActionBase):
             # According to documentation, https is default proto for port 443.
             # Therefore there is no need to specify it.
             if ssl and port != 443:
-                ssl = "https"
+                proto = "https"
             else:
-                ssl = ""
+                proto = ""
 
             listen_ip = vhost.get("listen_ip", "")
             if bindings[port]:
                 # We need to check for possible numerous and various conflicts.
                 if (
                     listen_ip in bindings[port]
-                    and bindings[port][listen_ip] != ssl
+                    and bindings[port][listen_ip] != proto
                 ):
                     # Reasoning: 'IP:Port' is the same and protocol is
                     # different -> error
@@ -129,7 +138,7 @@ class ActionModule(ActionBase):
                     )
                     raise AnsibleError(msg)
 
-            bindings[port][listen_ip] = ssl
+            bindings[port][listen_ip] = proto
 
         result["data"] = {
             "{}:{}:{}".format(listen_ip, port, binding[listen_ip]): {

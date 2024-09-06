@@ -38,3 +38,6 @@ jobs:
       - name: Lint with black
         run: |
           ./ci/run-black.sh check || ( ./ci/run-black.sh diff; exit 1 )
+      - name: Test with pytest
+        run: |
+          ./ci/run-pytest.sh
