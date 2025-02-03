@@ -1,5 +1,5 @@
 ansible-lint==25.1.1
-black==24.10.0
+black==25.1.0
 flake8
 flake8-docstrings
 flake8-import-order
