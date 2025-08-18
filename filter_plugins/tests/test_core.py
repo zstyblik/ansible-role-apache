@@ -91,18 +91,15 @@ def test_fpc_to_vhost_filename_happy_path(vhost, expected_fname):
     [
         (
             {},
-            "to_vhost_filename - 'servername'. 'servername'",
+            "to_vhost_filename - 'servername'",
         ),
         (
             {"priority": "abc", "servername": "test"},
-            (
-                "to_vhost_filename - invalid literal for int() with base 10: "
-                "'abc'. invalid literal for int() with base 10: 'abc'"
-            ),
+            "to_vhost_filename - invalid literal for int() with base 10: 'abc'",
         ),
         (
             {"priority": 200},
-            "to_vhost_filename - 'servername'. 'servername'",
+            "to_vhost_filename - 'servername'",
         ),
     ],
 )
