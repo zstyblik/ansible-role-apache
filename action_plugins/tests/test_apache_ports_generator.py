@@ -196,7 +196,7 @@ def test_apg_run_happy_path(vhosts, expected):
                 },
             ],
             AnsibleError,
-            "vhost 'pytest' is missing port attribute",
+            "vhost 'pytest' is missing port attribute: 'port'",
         ),
         # Port out-of-range
         (
@@ -225,7 +225,10 @@ def test_apg_run_happy_path(vhosts, expected):
                 },
             ],
             AnsibleError,
-            "failed to convert port 'abcefg' of vhost 'unknown' to int",
+            (
+                "failed to convert port 'abcefg' of vhost 'unknown' to int: "
+                "invalid literal for int() with base 10: 'abcefg'"
+            ),
         ),
         (
             [
@@ -234,7 +237,11 @@ def test_apg_run_happy_path(vhosts, expected):
                 },
             ],
             AnsibleError,
-            "failed to convert port 'None' of vhost 'unknown' to int",
+            (
+                "failed to convert port 'None' of vhost 'unknown' to int: "
+                "int() argument must be a string, a bytes-like object or "
+                "a real number, not 'NoneType'"
+            ),
         ),
         # IP/port/protocol collisions
         (

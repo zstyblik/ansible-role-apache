@@ -1,7 +1,7 @@
-ansible-lint==25.1.3
+ansible-lint==25.8.1
 black==25.1.0
 flake8
 flake8-docstrings
 flake8-import-order
-pytest
+pytest==8.4.1
 reorder-python-imports
