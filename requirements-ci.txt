@@ -1,4 +1,4 @@
-ansible-lint==25.8.1
+ansible-lint==25.9.2
 black==25.9.0
 flake8
 flake8-docstrings
