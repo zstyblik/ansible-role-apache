@@ -3,5 +3,5 @@ black==25.11.0
 flake8
 flake8-docstrings
 flake8-import-order
-pytest==8.4.2
+pytest==9.0.0
 reorder-python-imports
